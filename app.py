@@ -148,3 +148,28 @@ if uploaded_file is not None:
 else:
     # --- LANDING PAGE DEMO ---
     st.info("👋 Don't have a file? The tool will analyze leakage once you upload a Stripe export.")
+# --- WAITLIST SECTION ---
+st.divider()
+st.subheader("Want to automate this?")
+st.write("I'm building a version that monitors your Stripe account 24/7 and alerts you when fees spike.")
+
+# Create a form so the page doesn't reload until they hit Submit
+with st.form("waitlist_form"):
+email = st.text_input("Join the waitlist for the Pro Monitor:")
+submitted = st.form_submit_button("Notify Me")
+
+if submitted:
+    if email:
+        # 1. Print to logs (Safe Backup)
+        print(f"NEW LEAD: {email}") 
+        
+        # 2. Append to local file (Temporary)
+        try:
+            with open("waitlist.csv", "a") as f:
+                f.write(f"{email}\n")
+            st.success("You're on the list! I'll email you when the Pro version is ready.")
+        except Exception as e:
+            st.error("Something went wrong saving your email, but I saw it!")
+            print(f"Error saving to CSV: {e}")
+    else:
+        st.warning("Please enter an email address.")
