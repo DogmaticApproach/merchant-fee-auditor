@@ -1,3 +1,4 @@
+from streamlit_gsheets import GSheetsConnection
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -148,28 +149,50 @@ if uploaded_file is not None:
 else:
     # --- LANDING PAGE DEMO ---
     st.info("👋 Don't have a file? The tool will analyze leakage once you upload a Stripe export.")
-# --- WAITLIST SECTION ---
+# --- IMPORTS (Make sure these are at the top of your file) ---
+from streamlit_gsheets import GSheetsConnection
+import pandas as pd
+
+# --- WAITLIST SECTION (Replace the bottom logic) ---
 st.divider()
 st.subheader("Want to automate this?")
-st.write("I'm building a version that monitors your Stripe account 24/7 and alerts you when fees spike.")
+st.write("I'm building a version that monitors your Stripe account 24/7.")
 
-# Create a form so the page doesn't reload until they hit Submit
 with st.form("waitlist_form"):
     email = st.text_input("Join the waitlist for the Pro Monitor:")
     submitted = st.form_submit_button("Notify Me")
 
-if submitted:
-    if email:
-        # 1. Print to logs (Safe Backup)
-        print(f"NEW LEAD: {email}") 
-        
-        # 2. Append to local file (Temporary)
-        try:
-            with open("waitlist.csv", "a") as f:
-                f.write(f"{email}\n")
-            st.success("You're on the list! I'll email you when the Pro version is ready.")
-        except Exception as e:
-            st.error("Something went wrong saving your email, but I saw it!")
-            print(f"Error saving to CSV: {e}")
-    else:
-        st.warning("Please enter an email address.")
+    if submitted:
+        if email:
+            try:
+                # 1. Connect to Google Sheets
+                conn = st.connection("gsheets", type=GSheetsConnection)
+                
+                # 2. Get existing data
+                existing_data = conn.read(worksheet="Sheet1", usecols=[0], ttl=5)
+                
+                # 3. Handle Empty Sheet Case
+                if existing_data.empty:
+                     existing_emails = []
+                else:
+                     existing_emails = existing_data["email"].values
+
+                # 4. Check Duplicates
+                if email in existing_emails:
+                    st.warning("You are already on the list!")
+                else:
+                    # 5. Add new email
+                    new_data = pd.DataFrame([{"email": email}])
+                    updated_df = pd.concat([existing_data, new_data], ignore_index=True)
+                    
+                    # 6. Write back to Google Sheets
+                    conn.update(worksheet="Sheet1", data=updated_df)
+                    
+                    st.success("Success! You've been added to the permanent database.")
+                    print(f"NEW LEAD SAVED TO SHEETS: {email}")
+                    
+            except Exception as e:
+                st.error("Connection Error (I'm fixing it!)")
+                st.write(e) # Helps debug if something goes wrong
+        else:
+            st.warning("Please enter an email address.")
